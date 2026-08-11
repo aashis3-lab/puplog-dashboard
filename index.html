@@ -6,5 +6,32 @@
   <body>
     <h1>Welcome to Leo's Dashboard!</h1>
     <p>No recent notifications.</p>
+    <div id="log-container"></div>
+    <div id="food-count"></div>
+    <div id="water-count"></div>
+    <div id="walk-count"></div>
+    <div id="backyard-count"></div>
+    <script>
+      const link = "https://script.google.com/macros/s/AKfycbybrEWSBi2ouir5tnTuexn7tAalnXUbOmfEvZLWMYh2Mx7_FwwG56KVX798iDq11LlQ/exec?route=logs";
+      fetch(link)
+        .then(response => response.json())
+        .then(logs => {
+          console.log(logs)
+          const html = logs.map(log => {
+            return  `${log.who} ${log.label} at ${new Date(log.date).toLocaleTimeString()}! Note: ${log.note}`;
+          }).join(" ");
+          document.getElementById("log-container").innerHTML = html;
+          
+          const today = new Date().toDateString();
+          const foodLogs = logs.filter(log => log.action === "food" && new Date(log.date).toDateString() === today);
+          const waterLogs = logs.filter(log => log.action === "water" && new Date(log.date).toDateString() === today);
+          const walkLogs = logs.filter(log => log.action === "walk" && new Date(log.date).toDateString() === today);
+          const backLogs = logs.filter(log => log.action === "backyard" && new Date(log.date).toDateString() === today);
+          document.getElementById("food-count").innerHTML = foodLogs.length;
+          document.getElementById("water-count").innerHTML = waterLogs.length;
+          document.getElementById("walk-count").innerHTML = walkLogs.length;
+          document.getElementById("backyard-count").innerHTML = backLogs.length;
+        })
+    </script>
   </body>
 </html>
