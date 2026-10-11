@@ -1,5 +1,9 @@
 # 🐾 PupLog
 
+A personal pet activity tracker that turns daily care logs into a simple, real-time dashboard for monitoring Leo’s food, water, walks, and backyard activity.
+
+Built with vanilla JavaScript and a Google Apps Script backend, PupLog retrieves activity data as JSON, processes timestamps and daily events, and dynamically updates the dashboard with recent logs and activity totals.
+
 Tap a sticker by the food bowl, door, or leash hook with your phone → pick your name → done.
 Everyone in the family gets a text, and a dashboard shows what's happened today.
 
