@@ -4,52 +4,33 @@
  */
 const CONFIG = {
   PET: {
-    NAME: "Your pet",
-    BREED: "",       // e.g. "Golden Retriever"
-    BIRTHDAY: "",    // "YYYY-MM-DD" — used for age and the birthday countdown
-    PHOTO_URL: "",   // link to a photo, or a file name next to your dashboard's index.html (e.g. "pet.jpg")
+    NAME: "Leo",
+    BREED: "Maltipoo",
+    BIRTHDAY: "2020-08-03",
+    PHOTO_URL: "leo.jpg",   // drop leo.jpg into the dashboard's public/ folder
   },
 
   // Leave "" if this script was created from the Sheet (Extensions → Apps Script).
-  // Otherwise paste the long ID from the Sheet's URL: docs.google.com/spreadsheets/d/<THIS PART>/edit
   SHEET_ID: "",
-  SHEET_NAME: "PupLog",
+  SHEET_NAME: "Leo's Log",
 
   // Each family member and where their alerts go.
-  // Text messages: use your carrier's email-to-text address, e.g. 5551234567@tmomail.net
-  // Email: any normal address. Leave "" for someone who shouldn't get alerts.
+  // Replace CARRIER with the same email-to-text domain your current script uses
+  // (copy the exact addresses from the config that's live right now).
+  // Names must match the names already in the Sheet.
   FAMILY: {
-    "Name 1": "",
-    "Name 2": "",
-    "Name 3": "",
+    "Mama":  "6509953244@CARRIER",
+    "Aashi": "6507400357@CARRIER",
+    "Papa":  "6505336649@CARRIER",
   },
 
-  // Everything you can log. The short word on the left (food, water, ...) is saved in the Sheet
-  // and used in tag links — don't rename it once you've written tags. Everything else is safe to change.
-  //
-  //   group      "daily", "health", "grooming" or "supplies" (where it shows up)
-  //   name       short name for the dashboard
-  //   label      sentence used in texts and the timeline; {pet} becomes your pet's name
-  //   goal       daily target, shown as a progress ring (leave out for no goal)
-  //   options    choices to pick from. A choice can be { name, every } — "every" is days between
-  //              doses / grooming sessions, used for "next due" countdowns. Meds can also have a usual dose.
-  //   trip       true = first choice is "leaving", second is "coming back"; out + back counts once
-  //   amount     an extra number or text to record, e.g. { label: "Portion", unit: "cups" }
-  //              add required: true to make it mandatory, type: "text" for words instead of numbers
-  //   due        ask for a "next due" date (vaccines)
-  //   usualTime  true = show the usual time of day on the dashboard
-  //   backdate   true = Quick Log asks for an optional date, for logging things that happened earlier
-  //   notify     false = don't send texts for this one (free Gmail allows ~100 alert emails a day)
-  //
-  // The keys meds, vaccine, vet, weight, symptom, grooming and supplies power the Health,
-  // Grooming and Supplies sections of the dashboard — keep those names.
   ACTIONS: {
     // ---- Daily care ----
-    food:     { group: "daily", name: "Food", label: "fed {pet}", emoji: "🍦", goal: 2, usualTime: true,
-                options: ["Breakfast", "Dinner", "Other"],
+    food:     { group: "daily", name: "Food", label: "fed {pet}", emoji: "🍦", goal: 3, usualTime: true,
+                options: ["Sweet Chews", "Potato Mash", "Kibble + Cheese", "Paratha Bites", "Other"],
                 amount: { label: "Portion", unit: "cups", min: 0, max: 20 } },
     water:    { group: "daily", name: "Water", label: "refilled {pet}'s water", emoji: "💧", goal: 1 },
-    backyard: { group: "daily", name: "Backyard", label: "let {pet} out back", emoji: "🌿", goal: 3, trip: true,
+    backyard: { group: "daily", name: "Backyard", label: "let {pet} out back", emoji: "🌿", goal: 2, trip: true, usualTime: true,
                 options: ["Sent {pet} out", "Brought back in"] },
     walk:     { group: "daily", name: "Walks", label: "walked {pet}", emoji: "🦮", goal: 2, trip: true, usualTime: true,
                 options: ["Going on a walk", "Came back from a walk"],
@@ -58,9 +39,9 @@ const CONFIG = {
                 options: ["Pee", "Poop"], notePrompt: "Anything unusual?" },
     treats:   { group: "daily", name: "Treats", label: "gave {pet} a treat", emoji: "🦴", notify: false,
                 amount: { label: "How many", unit: "treats", min: 1, max: 50 } },
-    play:     { group: "daily", name: "Playtime", label: "played with {pet}", emoji: "🎾", notify: false,
+    play:     { group: "daily", name: "Playtime", label: "played with {pet}", emoji: "🎾", goal: 1, notify: false,
                 amount: { label: "How long", unit: "min", min: 1, max: 600 } },
-    teeth:    { group: "daily", name: "Teeth", label: "brushed {pet}'s teeth", emoji: "🪥", notify: false },
+    teeth:    { group: "daily", name: "Teeth", label: "brushed {pet}'s teeth", emoji: "🪥", goal: 1, notify: false },
 
     // ---- Health ----
     meds:     { group: "health", name: "Medication", label: "gave {pet} medication", emoji: "💊", backdate: true,
@@ -75,7 +56,7 @@ const CONFIG = {
     vet:      { group: "health", name: "Vet visit", label: "took {pet} to the vet", emoji: "🩺", backdate: true,
                 options: ["Checkup", "Sick visit", "Vaccines", "Dental", "Emergency", "Other"],
                 notePrompt: "What did the vet say?" },
-    weight:   { group: "health", name: "Weight", label: "weighed {pet}", emoji: "⚖️", notify: false,
+    weight:   { group: "health", name: "Weight", label: "weighed {pet}", emoji: "⚖️", notify: false, backdate: true,
                 amount: { label: "Weight", unit: "lb", min: 0.5, max: 350, required: true } },
     symptom:  { group: "health", name: "Symptom", label: "noticed a symptom", emoji: "🤒",
                 options: ["Vomiting", "Diarrhea", "Limping", "Low appetite", "Low energy", "Itching / scratching", "Coughing", "Other"],
@@ -84,37 +65,39 @@ const CONFIG = {
     // ---- Grooming ----
     grooming: { group: "grooming", name: "Grooming", label: "groomed {pet}", emoji: "🛁", notify: false, backdate: true,
                 options: [
+                  { name: "Groomer visit", every: 182 },   // twice a year
+                  { name: "Nail trim", every: 182 },       // done with the groomer
                   { name: "Bath", every: 30 },
-                  { name: "Groomer visit", every: 42 },
-                  { name: "Nail trim", every: 21 },
-                  { name: "Ear cleaning", every: 14 },
-                  { name: "Brushing", every: 7 },
+                  { name: "Brushing", every: 1 },          // daily
                 ] },
 
     // ---- Supplies ----
     supplies: { group: "supplies", name: "New bag", label: "opened a new bag", emoji: "🛍️",
-                options: ["Opened new food bag", "Opened new treat bag"] },
+                options: ["Opened new kibble bag", "Opened new Sweet Chews bag", "Opened new treat bag"] },
   },
 
-  // Estimates how much is left since the last "opened new bag". Set bagSize to turn one on.
-  //   uses         which action eats from this bag
-  //   perLog       how much one log uses when no amount is entered
-  //   onlyOptions  only count these choices (e.g. just "Kibble") — leave [] to count all
+  // Estimates how much is left since the last "opened new bag".
   SUPPLIES: [
-    { label: "Food",   openedBy: "Opened new food bag",  uses: "food",   bagSize: 0, unit: "cups",   perLog: 1, onlyOptions: [], warnDays: 5 },
-    { label: "Treats", openedBy: "Opened new treat bag", uses: "treats", bagSize: 0, unit: "treats", perLog: 1, onlyOptions: [], warnDays: 5 },
+    // 24 lb V-dog Kind Kibble ≈ 90 cups, 1 cup each dinner
+    { label: "Kibble", openedBy: "Opened new kibble bag", uses: "food", bagSize: 90, unit: "cups",
+      perLog: 1, onlyOptions: ["Kibble + Cheese"], warnDays: 7 },
+    // 16 oz bag lasts about a month at 2 chews a day ≈ 60 chews
+    { label: "Sweet Chews", openedBy: "Opened new Sweet Chews bag", uses: "food", bagSize: 60, unit: "chews",
+      perLog: 2, onlyOptions: ["Sweet Chews"], warnDays: 5 },
+    // Set bagSize to turn on treat tracking
+    { label: "Treats", openedBy: "Opened new treat bag", uses: "treats", bagSize: 0, unit: "treats",
+      perLog: 1, onlyOptions: [], warnDays: 5 },
   ],
 
   NOTIFY: {
-    ON_LOG: true,         // text/email everyone when something is logged (unless the action says notify: false)
-    ON_NOTE: true,        // text/email everyone when someone adds a note
-    SKIP_SENDER: false,   // true = don't alert the person who did the logging
+    ON_LOG: true,
+    ON_NOTE: true,
+    SKIP_SENDER: false,
   },
 
-  PUBLIC_DASHBOARD: true,   // false = the dashboard only works with your family link (#key=...)
-  SHOW_NOTES: true,         // false = hide written notes on the dashboard
-  VACCINE_WARN_DAYS: 30,    // highlight vaccines due within this many days
+  PUBLIC_DASHBOARD: true,
+  SHOW_NOTES: true,
+  VACCINE_WARN_DAYS: 30,
 
-  // Optional: your dashboard address, shown as a link after logging. e.g. "https://puplog-yourname.vercel.app"
-  DASHBOARD_URL: "",
+  DASHBOARD_URL: "https://puplog-dashboard.vercel.app",
 };
