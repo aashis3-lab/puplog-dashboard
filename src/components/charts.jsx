@@ -23,7 +23,7 @@ export function Ring({ value, size = 64, stroke = 5, complete = false, children,
   return (
     <div className="ring" style={{ width: size, height: size }} role="img" aria-label={label}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-        <circle cx={mid} cy={mid} r={r} fill="none" stroke="var(--track)" strokeWidth={stroke} />
+        <circle cx={mid} cy={mid} r={r} fill="none" stroke="var(--ring-track)" strokeWidth={stroke} />
         {value > 0 && (
           <circle
             cx={mid} cy={mid} r={r} fill="none"

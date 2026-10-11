@@ -186,9 +186,9 @@ The dashboard is a small website in this project (the `src/` folder). Vercel bui
 3. Go to [vercel.com](https://vercel.com), sign in with GitHub, click **Add New → Project**, pick your fork, and click **Deploy**. Vercel reads the settings from `vercel.json`, so there's nothing to change.
 4. You'll get a link like `https://puplog-yourname.vercel.app`. That's your dashboard. Every time you commit a change on GitHub, Vercel rebuilds it within a minute.
 
-The dashboard has a side panel with five pages — **Today**, **Health**, **Grooming**, **Supplies**, and **Trends** — and works on phones, tablets, and computers. On a phone, tap ☰ at the top left to switch pages. A number next to a page means something there needs attention, like a vaccine due soon.
+The dashboard has a friendly sky theme (a night sky in dark mode), a side panel with five pages — **Today**, **Health**, **Grooming**, **Supplies**, and **Trends** — and works on phones, tablets, and computers. On a phone, tap ☰ at the top left to switch pages. A number next to a page means something there needs attention, like a vaccine due soon.
 
-**Adding a photo.** In your GitHub copy, open the `public` folder, click **Add file → Upload files**, and upload a photo (e.g. `photo.jpg`). Set `PHOTO_URL: "photo.jpg"` in Config.gs and publish a new version (Step 5's ⚠️ note). A full link to a photo elsewhere works too. Without a photo, the dashboard shows your dog's initial.
+**Adding a photo.** In your GitHub copy, open the `public` folder, click **Add file → Upload files**, and upload a photo (a square crop around your dog's face works best, e.g. `photo.jpg`). Then open `src/config.js` and set `PET_PHOTO = "photo.jpg"`. Vercel picks it up on its own. (A `PHOTO_URL` in Config.gs also works and takes priority.) Without a photo, the dashboard shows your dog's initial.
 
 **Family-only dashboard.** If you set `PUBLIC_DASHBOARD: false`, your family's link is the dashboard address plus your view key: `https://puplog-yourname.vercel.app/#key=YOUR_VIEW_KEY` (find `VIEW_KEY` in Script Properties). Each phone opens it once and remembers it.
 

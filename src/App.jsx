@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChartColumn, CloudOff, HeartPulse, LayoutDashboard, Lock, Menu, Package, Scissors } from "lucide-react";
 import Sidebar from "./components/Sidebar.jsx";
+import Sky from "./components/Sky.jsx";
 import { Empty } from "./components/ui.jsx";
 import { useDashboard, useRoute } from "./data.js";
 import { daysUntil } from "./format.js";
@@ -70,6 +71,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <Sky />
       <Sidebar pages={pages} active={current.id} data={data} open={menuOpen} onClose={() => setMenuOpen(false)} />
       <div className="main">
         <header className="topbar">

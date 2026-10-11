@@ -1,4 +1,4 @@
-import { Cake, CalendarClock, Inbox } from "lucide-react";
+import { Cake, CalendarClock, Inbox, Moon, Sun, Sunrise, Sunset } from "lucide-react";
 import { Ring } from "../components/charts.jsx";
 import { Avatar } from "../components/Sidebar.jsx";
 import { Card, Empty, List, PageHeader, Row } from "../components/ui.jsx";
@@ -68,6 +68,15 @@ function Goals({ data, A }) {
   );
 }
 
+function greeting(now) {
+  const h = now.getHours();
+  if (h < 5) return { text: "Good night", icon: Moon };
+  if (h < 12) return { text: "Good morning", icon: Sunrise };
+  if (h < 17) return { text: "Good afternoon", icon: Sun };
+  if (h < 21) return { text: "Good evening", icon: Sunset };
+  return { text: "Good night", icon: Moon };
+}
+
 export default function Today({ data }) {
   const A = Object.fromEntries(data.actions.map(a => [a.key, a]));
   const daily = data.actions.filter(a => a.group === "daily");
@@ -75,7 +84,12 @@ export default function Today({ data }) {
 
   return (
     <>
-      <PageHeader eyebrow={dateOf(now, { weekday: "long", month: "long", day: "numeric" })} title="Today" />
+      <PageHeader
+        eyebrow={dateOf(now, { weekday: "long", month: "long", day: "numeric" })}
+        title={greeting(now).text}
+        icon={greeting(now).icon}
+        subtitle={`Here's how ${data.pet.name}'s day is going.`}
+      />
       <Profile data={data} />
       <Goals data={data} A={A} />
 

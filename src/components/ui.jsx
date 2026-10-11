@@ -18,12 +18,16 @@ export function Card({ title, icon: Icon, action, children, className = "", flus
   );
 }
 
-export function PageHeader({ eyebrow, title, children }) {
+export function PageHeader({ eyebrow, title, icon: Icon, subtitle, children }) {
   return (
     <header className="page-head">
       <div>
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-        <h1 className="page-title">{title}</h1>
+        <h1 className="page-title">
+          {Icon && <Icon size={28} strokeWidth={1.75} aria-hidden="true" />}
+          {title}
+        </h1>
+        {subtitle && <p className="page-subtitle">{subtitle}</p>}
       </div>
       {children && <div className="page-head__aside">{children}</div>}
     </header>

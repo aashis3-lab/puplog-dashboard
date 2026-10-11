@@ -23,7 +23,7 @@ export default function Sidebar({ pages, active, data, open, onClose }) {
       <div className={`scrim ${open ? "is-open" : ""}`} onClick={onClose} aria-hidden="true" />
       <aside className={`sidebar ${open ? "is-open" : ""}`} aria-label="Sections">
         <div className="sidebar__brand">
-          <PawPrint size={18} strokeWidth={1.75} aria-hidden="true" />
+          <span className="brand-mark"><PawPrint size={16} strokeWidth={2} aria-hidden="true" /></span>
           <span>PupLog</span>
           <button type="button" className="icon-btn sidebar__close" onClick={onClose} aria-label="Close menu">
             <X size={18} strokeWidth={1.75} />

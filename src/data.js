@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { REFRESH_MS, SCRIPT_URL } from "./config.js";
+import { PET_PHOTO, REFRESH_MS, SCRIPT_URL } from "./config.js";
 
 const KEY_STORE = "puplog-view-key";
 
@@ -38,6 +38,7 @@ export function useDashboard() {
         setState({ data: null, error: "private", loading: false });
         return;
       }
+      if (data.pet && !data.pet.photo && PET_PHOTO) data.pet.photo = PET_PHOTO;
       setState({ data, error: null, loading: false });
     } catch {
       setState(s => ({ ...s, error: s.data ? null : "offline", loading: false, stale: !!s.data }));
