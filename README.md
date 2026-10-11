@@ -179,18 +179,22 @@ To test it, tap the sticker with your phone unlocked. iPhones show a notificatio
 
 ## Step 8 — Put your dashboard online
 
-The dashboard is one file, `index.html`.
+The dashboard is a small website in this project (the `src/` folder). Vercel builds and hosts it for free.
 
 1. On GitHub, click **Fork** on this project to make your own copy.
-2. In your copy, open `index.html` → ✏️ edit. Near the bottom, replace the `SCRIPT_URL` link with your Web app URL from Step 5. **Commit changes**.
-3. Go to [vercel.com](https://vercel.com), sign in with GitHub, click **Add New → Project**, pick your fork, and click **Deploy**. No settings to change.
-4. You'll get a link like `https://puplog-yourname.vercel.app`. That's your dashboard.
+2. In your copy, open `src/config.js` → ✏️ edit. Replace the `SCRIPT_URL` link with your Web app URL from Step 5. **Commit changes**.
+3. Go to [vercel.com](https://vercel.com), sign in with GitHub, click **Add New → Project**, pick your fork, and click **Deploy**. Vercel reads the settings from `vercel.json`, so there's nothing to change.
+4. You'll get a link like `https://puplog-yourname.vercel.app`. That's your dashboard. Every time you commit a change on GitHub, Vercel rebuilds it within a minute.
 
-**Adding a photo.** In your GitHub copy, click **Add file → Upload files** and upload a photo (e.g. `photo.jpg`) next to `index.html`. Set `PHOTO_URL: "photo.jpg"` in Config.gs and publish a new version (Step 5's ⚠️ note). A full link to a photo elsewhere works too.
+The dashboard has a side panel with five pages — **Today**, **Health**, **Grooming**, **Supplies**, and **Trends** — and works on phones, tablets, and computers. On a phone, tap ☰ at the top left to switch pages. A number next to a page means something there needs attention, like a vaccine due soon.
+
+**Adding a photo.** In your GitHub copy, open the `public` folder, click **Add file → Upload files**, and upload a photo (e.g. `photo.jpg`). Set `PHOTO_URL: "photo.jpg"` in Config.gs and publish a new version (Step 5's ⚠️ note). A full link to a photo elsewhere works too. Without a photo, the dashboard shows your dog's initial.
 
 **Family-only dashboard.** If you set `PUBLIC_DASHBOARD: false`, your family's link is the dashboard address plus your view key: `https://puplog-yourname.vercel.app/#key=YOUR_VIEW_KEY` (find `VIEW_KEY` in Script Properties). Each phone opens it once and remembers it.
 
 *(Optional)* Put your dashboard address in `DASHBOARD_URL` in Config.gs and publish a new version. A "See your dog's dashboard →" link then appears after each log.
+
+*(For developers)* `npm install` then `npm run dev` runs the dashboard locally. It's React + Vite with Lucide icons; charts are plain SVG.
 
 ---
 
@@ -236,7 +240,7 @@ Set `PUBLIC_DASHBOARD: false` to make the dashboard family-only, or `SHOW_NOTES:
 | Tags stopped working after I changed the code | You probably made a *new* deployment (new URL). Go to **Manage deployments**, edit the **original** deployment, and choose New version. |
 | My Config.gs change doesn't show up | Saving isn't enough — publish a **New version** (Step 5's ⚠️ note). The dashboard can also take up to 5 minutes to refresh. |
 | No text messages | Check the address in `FAMILY`, that `NOTIFY.ON_LOG` is `true`, that the action doesn't have `notify: false`, and your carrier's email-to-text domain. Free accounts can send about 100 alert emails a day. |
-| Dashboard says "Couldn't reach PupLog" | Check `SCRIPT_URL` in `index.html` matches your Web app URL exactly and ends in `/exec`. |
+| Dashboard says "Can't reach PupLog" | Check `SCRIPT_URL` in `src/config.js` matches your Web app URL exactly and ends in `/exec`. |
 | A section says "add one in Quick Log" | That's normal until you've logged one. |
 | Supplies says to set a bag size | Set `bagSize` in `SUPPLIES` in Config.gs, then publish a new version. |
 | "Unknown tag" | The `action=` in the link doesn't match an action in Config.gs. |
@@ -248,7 +252,7 @@ Set `PUBLIC_DASHBOARD: false` to make the dashboard family-only, or `SHOW_NOTES:
 1. Replace everything in **Code.gs** with the new [`apps-script/Code.gs`](apps-script/Code.gs). Leave **Config.gs** alone — your settings live there.
 2. If the update adds new settings, copy them from the new [`apps-script/Config.gs`](apps-script/Config.gs) into yours.
 3. Publish with **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy** — *not* New deployment.
-4. If `index.html` changed, update your GitHub copy (keep your `SCRIPT_URL`). Vercel redeploys on its own.
+4. If the dashboard changed, update your GitHub copy (keep your `SCRIPT_URL` in `src/config.js`). Vercel redeploys on its own.
 
 **Coming from a single-file PupLog** (everything was in Code.gs, with `PET_NAME` at the top)? Create Config.gs as in Step 2, copy your old family addresses, Sheet ID, tab name, and choices into it, then replace Code.gs. Your existing rows keep working — new columns are only added to new rows.
 
