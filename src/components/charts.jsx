@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { DAY, dateOf, dayKeyDate, plural, shortDate } from "../format.js";
+import { DAY, dateOf, dayKeyDate, shortDate } from "../format.js";
 
 /** Width of an element, kept up to date — lets SVG charts draw at real pixel size. */
 function useWidth(fallback) {
@@ -39,27 +39,32 @@ export function Ring({ value, size = 64, stroke = 5, complete = false, children,
   );
 }
 
-/** Seven small columns with an optional dashed goal line. */
-export function WeekBars({ counts, days, goal }) {
-  const max = Math.max(goal || 0, ...counts, 1);
+const BAR_SCALE = 78; // % of the plot height used by the tallest bar, leaving room for its number
+
+/** Last 7 days for one goal: a number on every bar, met/short colouring, labelled dashed goal line. */
+export function GoalBars({ counts, days, goal, label }) {
+  const max = Math.max(goal, ...counts, 1);
+  const last = counts.length - 1;
+  const dayName = (d, long) => dayKeyDate(d).toLocaleDateString([], long ? { weekday: "long", month: "short", day: "numeric" } : { weekday: "short" });
+  const summary = counts.map((n, i) => `${i === last ? "today so far" : dayName(days[i], true)}: ${n}`).join(", ");
   return (
-    <div className="weekbars">
-      <div className="weekbars__plot">
-        {counts.map((n, i) => (
-          <div
-            key={days[i]}
-            className="weekbars__col"
-            title={`${dayKeyDate(days[i]).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}: ${n}`}
-          >
-            <div className={`weekbars__bar ${i === counts.length - 1 ? "is-today" : ""}`} style={{ height: `${(n / max) * 100}%` }} />
-          </div>
-        ))}
-        {goal > 0 && <div className="weekbars__goal" style={{ bottom: `${(goal / max) * 100}%` }} title={`Goal: ${goal} a day`} />}
+    <div className="gbars" role="img" aria-label={`${label}, last 7 days. Goal ${goal} a day. ${summary}.`}>
+      <div className="gbars__plot" aria-hidden="true">
+        <div className="gbars__goal" style={{ bottom: `${(goal / max) * BAR_SCALE}%` }}>
+          <span>goal<br />{goal}</span>
+        </div>
+        {counts.map((n, i) => {
+          const state = n >= goal ? "met" : i === last ? "today" : "short";
+          return (
+            <div key={days[i]} className="gbars__col" title={`${i === last ? "Today so far" : dayName(days[i], true)}: ${n} (goal ${goal})`}>
+              <span className={`gbars__value is-${state}`}>{n}</span>
+              <div className={`gbars__bar is-${state}`} style={{ height: `${(n / max) * BAR_SCALE}%` }} />
+            </div>
+          );
+        })}
       </div>
-      <div className="weekbars__labels" aria-hidden="true">
-        {days.map((d, i) => (
-          <span key={d}>{i === days.length - 1 ? "Today" : dayKeyDate(d).toLocaleDateString([], { weekday: "narrow" })}</span>
-        ))}
+      <div className="gbars__labels" aria-hidden="true">
+        {days.map((d, i) => <span key={d}>{i === last ? "Today" : dayName(d)}</span>)}
       </div>
     </div>
   );
@@ -112,31 +117,49 @@ export function LineChart({ points, unit }) {
   );
 }
 
-/** Calendar heatmap: columns are weeks, rows are weekdays (Sunday first). */
-export function Heatmap({ days, counts, todayKey }) {
-  const max = Math.max(...counts, 1);
+const HEAT_LEVELS = [
+  { cls: "none", label: "None" },
+  { cls: "some", label: "Some" },
+  { cls: "most", label: "Most" },
+  { cls: "all", label: "All goals met" },
+];
+function heatLevel(share) {
+  if (share == null) return null;
+  if (share >= 1) return HEAT_LEVELS[3];
+  if (share >= 0.5) return HEAT_LEVELS[2];
+  if (share > 0) return HEAT_LEVELS[1];
+  return HEAT_LEVELS[0];
+}
+
+/** Calendar of the last ~13 weeks: columns are weeks (Sunday on top), shaded by share of goals met. */
+export function GoalHeatmap({ days, met, todayKey }) {
   const lead = dayKeyDate(days[0]).getDay();
   const cols = Math.ceil((lead + days.length) / 7);
+  const months = [];
+  for (let c = 0; c < cols; c++) {
+    const i = Math.max(0, c * 7 - lead);
+    const m = dayKeyDate(days[Math.min(i, days.length - 1)]).toLocaleDateString([], { month: "short" });
+    months.push(c === 0 || months.filter(Boolean).slice(-1)[0] !== m ? m : "");
+  }
   return (
-    <div>
-      <div className="heatmap" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-        {Array.from({ length: lead }, (_, i) => <span key={`b${i}`} className="heatmap__cell is-blank" />)}
+    <div className="gheat">
+      <div className="gheat__months" style={{ gridTemplateColumns: `repeat(${cols}, var(--cell, 1fr))` }} aria-hidden="true">
+        {months.map((m, c) => <span key={c}>{m}</span>)}
+      </div>
+      <div className="gheat__grid" style={{ gridTemplateColumns: `repeat(${cols}, var(--cell, 1fr))` }}>
+        {Array.from({ length: lead }, (_, i) => <span key={`b${i}`} className="gheat__cell is-blank" />)}
         {days.map((d, i) => {
-          const n = counts[i];
-          const level = n === 0 ? 0 : Math.max(1, Math.ceil((n / max) * 4));
+          const level = heatLevel(met[i]);
+          const date = dayKeyDate(d).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+          const text = level ? `${Math.round(met[i] * 100)}% of goals met${d === todayKey ? " so far" : ""}` : "not tracked yet";
           return (
-            <span
-              key={d}
-              className={`heatmap__cell l${level} ${d === todayKey ? "is-today" : ""}`}
-              title={`${dayKeyDate(d).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}: ${plural(n, "log")}`}
-            />
+            <span key={d} className={`gheat__cell ${level ? `is-${level.cls}` : "is-untracked"} ${d === todayKey ? "is-today" : ""}`} title={`${date}: ${text}`} />
           );
         })}
       </div>
-      <div className="heatmap__legend" aria-hidden="true">
-        <span>Less</span>
-        {[0, 1, 2, 3, 4].map(l => <span key={l} className={`heatmap__cell l${l}`} />)}
-        <span>More</span>
+      <div className="gheat__legend">
+        {HEAT_LEVELS.map(l => <span key={l.cls}><i className={`gheat__cell is-${l.cls}`} />{l.label}</span>)}
+        <span><i className="gheat__cell is-untracked" />Not tracked</span>
       </div>
     </div>
   );

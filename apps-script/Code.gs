@@ -750,6 +750,10 @@ function buildDashboard(rows, now) {
   const sum = (list, k) => list.reduce((s, d) => s + count(d, k), 0);
   const heatDays = days.slice(-HEATMAP_DAYS);
   const usualFrom = nowT - USUAL_TIME_DAYS * DAY_MS;
+  const insights = buildInsights({
+    days, goals, daily, count, dayMet, lastEvent, known, nowT,
+    startDay: rows.length ? local(rows[0].t).day : today,
+  });
 
   // Health, grooming
   const rowsFor = k => known.filter(r => r.action === k);
@@ -823,8 +827,107 @@ function buildDashboard(rows, now) {
         return { key: a.key, times: usualTimes(mins, Math.max(1, Math.min(a.goal || 1, 3))), samples: mins.length };
       }),
       totals: actions.map(a => ({ key: a.key, count: totals[a.key] || 0 })),
+      insights,
     },
   };
+}
+
+const round1 = n => Math.round(n * 10) / 10;
+
+// Goal-based summaries for the Trends page. "Last 7 days" = the 7 full days before today
+// (today is still in progress); days before the first log don't count against anything.
+function buildInsights(c) {
+  const { days, goals, daily, count, dayMet, lastEvent, startDay } = c;
+  const tracked = d => d >= startDay;
+  const full7 = days.slice(-8, -1).filter(tracked);
+  const prev7 = days.slice(-15, -8).filter(tracked);
+  const chartDays = days.slice(-7);
+  const total = (list, k) => list.reduce((s, d) => s + count(d, k), 0);
+  const avg = (list, k) => (list.length ? round1(total(list, k) / list.length) : null);
+
+  const goalStats = goals.map(a => ({
+    key: a.key,
+    goal: a.goal,
+    chart: chartDays.map(d => count(d, a.key)),
+    metDays: full7.filter(d => count(d, a.key) >= a.goal).length,
+    avgPerDay: avg(full7, a.key),
+  }));
+  const goalDays = goals.length * full7.length;
+  const goalsMetPct = goalDays ? Math.round((100 * goalStats.reduce((s, g) => s + g.metDays, 0)) / goalDays) : null;
+
+  let mostConsistent = null;
+  let mostMissed = null;
+  if (full7.length && goalStats.length > 1) {
+    const best = Math.max(...goalStats.map(g => g.metDays));
+    const worst = Math.min(...goalStats.map(g => g.metDays));
+    if (best !== worst) {
+      mostConsistent = goalStats.filter(g => g.metDays === best).map(g => g.key);
+      mostMissed = goalStats.filter(g => g.metDays === worst).map(g => g.key);
+    }
+  }
+
+  const heatDays = days.slice(-HEATMAP_DAYS);
+  return {
+    fullDays: full7.length,
+    prevDays: prev7.length,
+    chartDays,
+    goals: goalStats,
+    daysAllMet: full7.filter(dayMet).length,
+    goalsMetPct,
+    mostConsistent,
+    mostMissed,
+    compare: daily
+      .filter(a => a.goal > 0 || total(full7, a.key) + total(prev7, a.key) > 0)
+      .map(a => ({
+        key: a.key,
+        thisTotal: total(full7, a.key),
+        lastTotal: total(prev7, a.key),
+        thisAvg: avg(full7, a.key),
+        lastAvg: avg(prev7, a.key),
+      })),
+    other: daily
+      .filter(a => !a.goal && lastEvent[a.key])
+      .map(a => ({
+        key: a.key,
+        last7: total(days.slice(-7), a.key),
+        last30: total(days.slice(-30), a.key),
+        lastAt: iso(lastEvent[a.key].t),
+      })),
+    heatmap: {
+      days: heatDays,
+      // share of daily goals met that day (0..1), or null before tracking started
+      met: heatDays.map(d => (tracked(d) && goals.length
+        ? Math.round((100 * goals.filter(a => count(d, a.key) >= a.goal).length) / goals.length) / 100
+        : null)),
+    },
+    walkLength: walkLength(c.known, c.nowT),
+  };
+}
+
+// Average walk length over the last 30 days: the minutes typed in when logging, or else the
+// time between "going on a walk" and "came back" (if under 4 hours).
+function walkLength(rows, nowT) {
+  const a = getAction("walk");
+  if (!a || !a.trip || a.options.length < 2) return null;
+  const from = nowT - 30 * DAY_MS;
+  const mins = [];
+  let openAt = null;
+  rows.forEach(r => {
+    if (r.action !== "walk") return;
+    const n = Number(r.amount);
+    const typed = r.amount !== "" && isFinite(n) && n > 0;
+    if (r.option === a.options[0]) {
+      if (typed && r.t >= from) mins.push(n);
+      openAt = typed ? null : r.t;
+    } else if (r.option === a.options[1]) {
+      if (r.t >= from) {
+        if (typed) mins.push(n);
+        else if (openAt && r.t - openAt <= 4 * 3600000) mins.push(Math.round((r.t - openAt) / 60000));
+      }
+      openAt = null;
+    }
+  });
+  return { avgMin: mins.length ? Math.round(mins.reduce((s, m) => s + m, 0) / mins.length) : null, samples: mins.length };
 }
 
 // Raw recent rows (family key required).

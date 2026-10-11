@@ -1,15 +1,18 @@
 import { CircleAlert, Clock } from "lucide-react";
 import { daysUntil, plural } from "../format.js";
 
-export function Card({ title, icon: Icon, action, children, className = "", flush = false }) {
+export function Card({ title, icon: Icon, action, help, children, className = "", flush = false }) {
   return (
     <section className={`card ${flush ? "card--flush" : ""} ${className}`}>
       {(title || action) && (
         <header className="card__head">
-          <h3 className="card__title">
-            {Icon && <Icon size={16} strokeWidth={1.75} aria-hidden="true" />}
-            {title}
-          </h3>
+          <div>
+            <h3 className="card__title">
+              {Icon && <Icon size={16} strokeWidth={1.75} aria-hidden="true" />}
+              {title}
+            </h3>
+            {help && <p className="card__help">{help}</p>}
+          </div>
           {action}
         </header>
       )}
