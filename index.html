@@ -1,10 +1,207 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>PupLog</title>
+    <style>
+      :root {
+        --bg: #f9f8f5; --card: #ffffff; --ink: #111111; --ink-2: #555555; --muted: #8a8a8a;
+        --line: #eeece6; --chip: #f1efe8; --accent: #085041; --accent-bg: #e1f5ee;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #151513; --card: #1f1f1c; --ink: #f2f1ec; --ink-2: #c4c2ba; --muted: #8f8d86;
+          --line: #2e2d29; --chip: #2a2925; --accent: #8fd9bd; --accent-bg: #173a30;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #151513; --card: #1f1f1c; --ink: #f2f1ec; --ink-2: #c4c2ba; --muted: #8f8d86;
+        --line: #2e2d29; --chip: #2a2925; --accent: #8fd9bd; --accent-bg: #173a30;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg); color: var(--ink);
+        padding: 20px 16px 40px; max-width: 480px; margin: 0 auto;
+      }
+      header { margin-bottom: 18px; }
+      .eyebrow { font-size: 11px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+      h1 { font-size: 24px; font-weight: 650; margin-top: 4px; }
+      .status { font-size: 13px; color: var(--muted); margin-top: 4px; }
+      .banner {
+        background: var(--chip); color: var(--ink-2); font-size: 13px; line-height: 1.4;
+        border-radius: 14px; padding: 12px 14px; margin-bottom: 16px;
+      }
+      .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+      .tile { background: var(--card); border-radius: 18px; padding: 16px; min-height: 112px; }
+      .tile .emoji { font-size: 24px; }
+      .tile .count { font-size: 30px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 6px; line-height: 1; }
+      .tile .what { font-size: 13px; color: var(--ink-2); margin-top: 6px; }
+      .tile .last { font-size: 12px; color: var(--muted); margin-top: 4px; }
+      h2 { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin: 6px 0 10px; }
+      .feed { background: var(--card); border-radius: 18px; list-style: none; overflow: hidden; margin-bottom: 18px; }
+      .feed li { display: flex; gap: 12px; padding: 14px 16px; border-top: 1px solid var(--line); }
+      .feed li:first-child { border-top: none; }
+      .feed .emoji { font-size: 20px; width: 24px; text-align: center; flex-shrink: 0; }
+      .feed .body { flex: 1; min-width: 0; }
+      .feed .line { font-size: 15px; }
+      .feed .detail { font-size: 13px; color: var(--ink-2); margin-top: 2px; overflow-wrap: anywhere; }
+      .feed time { font-size: 12px; color: var(--muted); white-space: nowrap; }
+      .empty { padding: 18px 16px; color: var(--muted); font-size: 14px; }
+      footer { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+      footer button { background: none; border: none; color: var(--muted); text-decoration: underline; font: inherit; cursor: pointer; }
+    </style>
   </head>
   <body>
-    <h1>Welcome to Leo's Dashboard!</h1>
-    <p>No recent notifications.</p>
+    <header>
+      <div class="eyebrow">PupLog</div>
+      <h1 id="title">Loading…</h1>
+      <div class="status" id="status"></div>
+    </header>
+    <div id="banner" class="banner" hidden></div>
+    <section class="tiles" id="tiles"></section>
+    <div id="feeds"></div>
+    <footer id="footer"></footer>
+
+    <script>
+      // Your Apps Script web app URL (Deploy → Manage deployments → Web app URL, ends in /exec).
+      const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSsm7EoVpXxlSWSLDYi9xvjLYK62EEMAu2lxmg284GPA37CTWo9pMNwmc8waLcs7E/exec";
+      const REFRESH_MS = 60 * 1000;
+      const STORE = "puplog-view-key";
+
+      const $ = id => document.getElementById(id);
+
+      function el(tag, cls, text) {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text != null) n.textContent = text;
+        return n;
+      }
+
+      function store(fn) { try { return fn(); } catch (e) { return null; } }
+
+      // The family link looks like  https://your-dashboard/#key=...
+      // Everything after # stays in the browser and is never sent to the web host.
+      function getViewKey() {
+        const m = location.hash.match(/key=([^&]+)/);
+        if (m) {
+          const key = decodeURIComponent(m[1]);
+          store(() => localStorage.setItem(STORE, key));
+          history.replaceState(null, "", location.pathname + location.search);
+          return key;
+        }
+        return store(() => localStorage.getItem(STORE));
+      }
+
+      function forgetDevice() {
+        store(() => localStorage.removeItem(STORE));
+        location.reload();
+      }
+
+      function timeOf(d) { return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+
+      function dayLabel(d) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const that = new Date(d); that.setHours(0, 0, 0, 0);
+        const diff = Math.round((today - that) / 864e5);
+        if (diff === 0) return "Today";
+        if (diff === 1) return "Yesterday";
+        return d.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+      }
+
+      function tile(a, count, lastText) {
+        const t = el("div", "tile");
+        t.append(el("div", "emoji", a.emoji), el("div", "count", String(count)),
+                 el("div", "what", a.label), el("div", "last", lastText));
+        return t;
+      }
+
+      function renderPublic(data) {
+        $("title").textContent = `${data.pet}'s day`;
+        $("banner").hidden = false;
+        $("banner").textContent = `Live from ${data.pet}'s home. This public view shows today's real totals only — no names, notes, or times.`;
+        $("tiles").replaceChildren(...data.actions.map(a =>
+          tile(a, a.today, a.today ? "today" : "Not yet today")));
+        $("feeds").replaceChildren();
+        $("footer").replaceChildren();
+      }
+
+      function renderPrivate(data) {
+        const logs = data.logs.map(l => Object.assign({}, l, { date: new Date(l.date) }));
+        const todayStr = new Date().toDateString();
+        const today = logs.filter(l => l.date.toDateString() === todayStr);
+        // Counts come from the script (it knows which options are out/back pairs).
+
+        $("title").textContent = `${data.pet}'s day`;
+        $("banner").hidden = true;
+        $("tiles").replaceChildren(...data.actions.map(a => {
+          const mine = today.filter(l => l.action === a.key);
+          const last = mine[0];
+          return tile(a, a.today, last ? `${last.who} · ${timeOf(last.date)}` : "Not yet today");
+        }));
+
+        const groups = [];
+        logs.forEach(l => {
+          const label = dayLabel(l.date);
+          if (!groups.length || groups[groups.length - 1].label !== label) groups.push({ label, items: [] });
+          groups[groups.length - 1].items.push(l);
+        });
+        if (!groups.length || groups[0].label !== "Today") groups.unshift({ label: "Today", items: [] });
+
+        $("feeds").replaceChildren(...groups.slice(0, 3).flatMap(g => {
+          const list = el("ul", "feed");
+          if (!g.items.length) list.append(el("li", "empty", `Nothing logged for ${data.pet} yet today.`));
+          g.items.forEach(l => {
+            const li = el("li");
+            const body = el("div", "body");
+            body.append(el("div", "line", `${l.who} ${l.label}`));
+            const detail = [l.option, l.note && `“${l.note}”`].filter(Boolean).join(" · ");
+            if (detail) body.append(el("div", "detail", detail));
+            const time = el("time", null, timeOf(l.date));
+            time.dateTime = l.date.toISOString();
+            li.append(el("span", "emoji", l.emoji), body, time);
+            list.append(li);
+          });
+          return [el("h2", null, g.label), list];
+        }));
+
+        const btn = el("button", null, "Forget this device");
+        btn.onclick = forgetDevice;
+        $("footer").replaceChildren("Family view · ", btn);
+      }
+
+      async function load() {
+        const key = getViewKey();
+        const url = key ? `${SCRIPT_URL}?route=logs&key=${encodeURIComponent(key)}` : `${SCRIPT_URL}?route=summary`;
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.error === "unauthorized") {
+            store(() => localStorage.removeItem(STORE));
+            $("status").textContent = "That family link isn't valid anymore — showing the public view.";
+            return loadPublicOnly();
+          }
+          if (data.mode === "public" && !data.enabled) {
+            $("title").textContent = "Private dashboard";
+            $("status").textContent = "Open your family link to see the log.";
+            return;
+          }
+          data.mode === "private" ? renderPrivate(data) : renderPublic(data);
+          $("status").textContent = `Updated ${timeOf(new Date())}`;
+        } catch (e) {
+          $("status").textContent = "Couldn't reach PupLog. Pull to refresh or try again in a minute.";
+        }
+      }
+
+      async function loadPublicOnly() {
+        const data = await (await fetch(`${SCRIPT_URL}?route=summary`)).json();
+        if (data.enabled) renderPublic(data);
+      }
+
+      load();
+      setInterval(() => { if (!document.hidden) load(); }, REFRESH_MS);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+    </script>
   </body>
 </html>
